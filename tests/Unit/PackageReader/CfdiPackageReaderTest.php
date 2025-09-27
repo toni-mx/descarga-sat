@@ -8,6 +8,7 @@ use JsonSerializable;
 use PhpCfdi\SatWsDescargaMasiva\PackageReader\CfdiPackageReader;
 use PhpCfdi\SatWsDescargaMasiva\PackageReader\Exceptions\OpenZipFileException;
 use PhpCfdi\SatWsDescargaMasiva\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * This tests uses the Zip file located at tests/_files/zip/cfdi.zip that contains:
@@ -160,9 +161,7 @@ class CfdiPackageReaderTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider providerObtainUuidFromXmlCfdi
-     */
+    #[DataProvider('providerObtainUuidFromXmlCfdi')]
     public function testObtainUuidFromXmlCfdi(string $source, string $expected): void
     {
         $uuid = CfdiPackageReader::obtainUuidFromXmlCfdi($source);

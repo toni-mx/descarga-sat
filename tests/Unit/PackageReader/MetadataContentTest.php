@@ -6,6 +6,7 @@ namespace PhpCfdi\SatWsDescargaMasiva\Tests\Unit\PackageReader;
 
 use PhpCfdi\SatWsDescargaMasiva\PackageReader\Internal\MetadataContent;
 use PhpCfdi\SatWsDescargaMasiva\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MetadataContentTest extends TestCase
 {
@@ -46,9 +47,7 @@ class MetadataContentTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider providerReadMetadataWithSpecialCharacters
-     */
+    #[DataProvider('providerReadMetadataWithSpecialCharacters')]
     public function testReadMetadataWithSpecialCharacters(string $sourceValue, string $expectedValue): void
     {
         $contents = implode("\r\n", [
