@@ -14,7 +14,15 @@ que nombraremos así: ` Breaking . Feature . Fix `, donde:
 **Importante:** Las reglas de SEMVER no aplican si estás usando una rama (por ejemplo `main-dev`)
 o estás usando una versión cero (por ejemplo `0.18.4`).
 
-## Mantenimiento 2025-09-25
+## Versión 1.1.2 2025-09-25
+
+- Se detecta que en PHP 8.4, para la llamada al método `SplFileObject::setCsvControl()` se debe establecer el parámetro
+  `$escape` dado que cambiará en futuras versiones.
+- Se hacen ajustes al entorno de desarrollo para sustituir las anotaciones por atributos.
+- Se actualizan los grupos de reglas de `php-cs-fixer` pues cambiaron de nombre.
+- Se actualizan las herramientas de desarrollo.
+
+Adicionalmente, se incluyen estos cambios hechos por mantenimiento:
 
 - Se actualizan las herramientas `phpcs` y `phpcbf` a la versión 4.0.0.
 - Se moderniza la integración con SonarQube-Cloud.

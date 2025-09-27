@@ -7,6 +7,7 @@ namespace PhpCfdi\SatWsDescargaMasiva\Tests\Unit\Shared;
 use InvalidArgumentException;
 use PhpCfdi\SatWsDescargaMasiva\Shared\Uuid;
 use PhpCfdi\SatWsDescargaMasiva\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class UuidTest extends TestCase
 {
@@ -44,7 +45,7 @@ final class UuidTest extends TestCase
         ];
     }
 
-    /** @dataProvider providerInvalidValues */
+    #[DataProvider('providerInvalidValues')]
     public function testConstructWithInvalidValue(string $value): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -57,7 +58,7 @@ final class UuidTest extends TestCase
         $this->assertTrue(Uuid::check('96623061-61fe-49de-b298-c7156476aa8b'));
     }
 
-    /** @dataProvider providerInvalidValues */
+    #[DataProvider('providerInvalidValues')]
     public function testCheckInvalidValue(string $value): void
     {
         $this->assertFalse(Uuid::check($value));

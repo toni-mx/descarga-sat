@@ -6,6 +6,7 @@ namespace PhpCfdi\SatWsDescargaMasiva\Tests\Unit\Shared;
 
 use InvalidArgumentException;
 use PhpCfdi\SatWsDescargaMasiva\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class AbstractRfcFilterTest extends TestCase
 {
@@ -33,7 +34,7 @@ final class AbstractRfcFilterTest extends TestCase
         ];
     }
 
-    /** @dataProvider providerInvalidValues */
+    #[DataProvider('providerInvalidValues')]
     public function testConstructWithInvalidValue(string $value): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -46,7 +47,7 @@ final class AbstractRfcFilterTest extends TestCase
         $this->assertTrue(RfcFilterImplementation::check('XXX01010199A'));
     }
 
-    /** @dataProvider providerInvalidValues */
+    #[DataProvider('providerInvalidValues')]
     public function testCheckInvalidValue(string $value): void
     {
         $this->assertFalse(RfcFilterImplementation::check($value));

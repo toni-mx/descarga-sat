@@ -6,6 +6,7 @@ namespace PhpCfdi\SatWsDescargaMasiva\Tests\Unit\Shared;
 
 use PhpCfdi\SatWsDescargaMasiva\Shared\ServiceType;
 use PhpCfdi\SatWsDescargaMasiva\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class ServiceTypeTest extends TestCase
 {
@@ -27,7 +28,7 @@ final class ServiceTypeTest extends TestCase
         ];
     }
 
-    /** @dataProvider providerServiceTypes */
+    #[DataProvider('providerServiceTypes')]
     public function testJsonEncode(ServiceType $serviceType): void
     {
         $json = json_encode($serviceType);
