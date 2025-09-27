@@ -32,7 +32,7 @@ final class CsvReader
         $iterator->fwrite($contents);
         $iterator->rewind();
         $iterator->setFlags(SplTempFileObject::READ_CSV);
-        $iterator->setCsvControl('~', '|');
+        $iterator->setCsvControl('~', '|', '\\');
         return $iterator;
     }
 
