@@ -19,6 +19,7 @@ o estás usando una versión cero (por ejemplo `0.18.4`).
 - Se actualizan las herramientas `phpcs` y `phpcbf` a la versión 4.0.0.
 - Se moderniza la integración con SonarQube-Cloud.
 - Se actualiza `sonarqube-scan-action` a la versión 6.
+- Las pruebas se ejecutan configurando la zona de tiempo a `America/Mexico_City`.
 
 ## Versión 1.1.1 2025-06-02
 
