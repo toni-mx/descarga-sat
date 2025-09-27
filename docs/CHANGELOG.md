@@ -14,6 +14,12 @@ que nombraremos así: ` Breaking . Feature . Fix `, donde:
 **Importante:** Las reglas de SEMVER no aplican si estás usando una rama (por ejemplo `main-dev`)
 o estás usando una versión cero (por ejemplo `0.18.4`).
 
+## Mantenimiento 2025-09-25
+
+- Se actualizan las herramientas `phpcs` y `phpcbf` a la versión 4.0.0.
+- Se moderniza la integración con SonarQube-Cloud.
+- Se actualiza `sonarqube-scan-action` a la versión 6.
+
 ## Versión 1.1.1 2025-06-02
 
 Se mejora la documentación y las validaciones previas a enviar una consulta al SAT.
