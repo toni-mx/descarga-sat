@@ -14,6 +14,26 @@ que nombraremos así: ` Breaking . Feature . Fix `, donde:
 **Importante:** Las reglas de SEMVER no aplican si estás usando una rama (por ejemplo `main-dev`)
 o estás usando una versión cero (por ejemplo `0.18.4`).
 
+## Versión 1.1.3 2026-04-07
+
+Esta es una actualización de mantenimiento que tiene cambios mínimos en el código y compatibilidad con PHP 8.5.
+Esta actualización corrige el *build* en GitHub.
+
+- Se actualiza el año de licencia.
+- Se modifican los tipos de `Request#jsonSerialize` y `Response#jsonSerialize`.
+- Se modifica `InteractsXmlTrait#findAttributes` para hacerla más entendible.
+
+Adicionalmente, se incluyen estos cambios hechos por mantenimiento:
+
+- Se actualiza la configuración de PHPUnit para que falle y muestre todos los detalles en cualquier incidencia.
+- En los flujos de trabajo de GitHub:
+  - Se actualiza `sonarqube-scan-action` a la versión 7.
+  - Se actualizan las acciones de GitHub a sus últimas versiones.
+  - Se incluye PHP 8.5 a la matriz de pruebas.
+  - Se actualizan los trabajos para ejecutarse en PHP 8.5.
+  - Se renombra el trabajo `tests` a `phpunit`.
+- Se actualizan herramientas de desarrollo.
+
 ## Versión 1.1.2 2025-09-25
 
 - Se detecta que en PHP 8.4, para la llamada al método `SplFileObject::setCsvControl()` se debe establecer el parámetro
