@@ -13,8 +13,11 @@ final class Response implements JsonSerializable
      *
      * @param array<string, string> $headers
      */
-    public function __construct(private readonly int $statusCode, private readonly string $body, private readonly array $headers = [])
-    {
+    public function __construct(
+        private readonly int $statusCode,
+        private readonly string $body,
+        private readonly array $headers = [],
+    ) {
     }
 
     public function getStatusCode(): int
@@ -48,9 +51,19 @@ final class Response implements JsonSerializable
         return $this->statusCode < 600 && $this->statusCode >= 500;
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array{
+     *     statusCode: int,
+     *     headers: array<string, string>,
+     *     body: string
+     * }
+     */
     public function jsonSerialize(): array
     {
-        return get_object_vars($this);
+        return [
+            'statusCode' => $this->statusCode,
+            'headers' => $this->headers,
+            'body' => $this->body,
+        ];
     }
 }

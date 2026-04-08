@@ -16,8 +16,12 @@ final class Request implements JsonSerializable
      *
      * @param array<string, string> $headers
      */
-    public function __construct(private readonly string $method, private readonly string $uri, private readonly string $body, array $headers)
-    {
+    public function __construct(
+        private readonly string $method,
+        private readonly string $uri,
+        private readonly string $body,
+        array $headers,
+    ) {
         /** @var array<string, string> $headers */
         $headers = array_filter(array_merge($this->defaultHeaders(), $headers));
         $this->headers = $headers;
@@ -58,9 +62,21 @@ final class Request implements JsonSerializable
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array{
+     *     method: string,
+     *     uri: string,
+     *     headers: array<string, string>,
+     *     body: string
+     * }
+     */
     public function jsonSerialize(): array
     {
-        return get_object_vars($this);
+        return [
+            'method' => $this->method,
+            'uri' => $this->uri,
+            'headers' => $this->headers,
+            'body' => $this->body,
+        ];
     }
 }
