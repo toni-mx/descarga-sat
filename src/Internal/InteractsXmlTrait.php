@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace PhpCfdi\SatWsDescargaMasiva\Internal;
 
-use DOMAttr;
 use DOMDocument;
 use DOMElement;
-use DOMNamedNodeMap;
 use DOMNode;
 use InvalidArgumentException;
 
@@ -83,9 +81,7 @@ trait InteractsXmlTrait
         return implode('', $buffer);
     }
 
-    /**
-     * @return DOMElement[]
-     */
+    /** @return DOMElement[] */
     public function findElements(DOMElement $element, string ...$names): array
     {
         $current = strtolower(strval(array_pop($names)));
@@ -129,15 +125,12 @@ trait InteractsXmlTrait
         if (null === $found) {
             return [];
         }
+
         $attributes = [];
-        /**
-         * @var DOMNamedNodeMap<DOMAttr> $elementAttributes
-         * phpstan doesn't know that $found->attributes cannot be null since $found is a DOMElement
-         */
-        $elementAttributes = $found->attributes;
-        foreach ($elementAttributes as $attribute) {
-            $attributes[$attribute->localName] = $attribute->value;
+        foreach ($found->attributes as $attribute) {
+            $attributeName = strtolower($attribute->localName ?? '');
+            $attributes[$attributeName] = $attribute->value;
         }
-        return array_change_key_case($attributes, CASE_LOWER);
+        return $attributes;
     }
 }
