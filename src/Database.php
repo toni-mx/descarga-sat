@@ -42,6 +42,14 @@ class Database
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS ftp_stats (
+                month TEXT PRIMARY KEY,
+                xml_count INTEGER NOT NULL DEFAULT 0,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
     }
     
     public function saveRequest(string $requestId, string $start, string $end, string $status = 'pending'): int
@@ -67,5 +75,23 @@ class Database
     {
         $stmt = $this->pdo->query("SELECT * FROM requests ORDER BY created_at DESC LIMIT 50");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    public function getFtpStats(): array
+    {
+        $stmt = $this->pdo->query("SELECT month, xml_count FROM ftp_stats ORDER BY month ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    public function saveFtpStat(string $month, int $count): void
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT INTO ftp_stats (month, xml_count, updated_at) 
+            VALUES (?, ?, CURRENT_TIMESTAMP) 
+            ON CONFLICT(month) DO UPDATE SET 
+            xml_count = excluded.xml_count, 
+            updated_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute([$month, $count]);
     }
 }

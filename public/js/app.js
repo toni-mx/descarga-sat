@@ -147,6 +147,104 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 120000); // 120,000 ms = 2 minutes
 
+    // Analytics & Charts
+    let ftpChartInstance = null;
+    let reqChartInstance = null;
+
+    const loadAnalytics = async () => {
+        try {
+            const data = await apiCall('api.php?action=analytics');
+            if (data && data.success) {
+                renderCharts(data.ftp, data.requests);
+            }
+        } catch (e) {
+            console.error('Error loading analytics', e);
+        }
+    };
+
+    const renderCharts = (ftpStats, reqStats) => {
+        // FTP Bar Chart
+        const ftpCtx = document.getElementById('ftpChart');
+        if (ftpCtx) {
+            const labels = ftpStats.map(s => s.month);
+            const values = ftpStats.map(s => s.xml_count);
+            
+            if (ftpChartInstance) ftpChartInstance.destroy();
+            ftpChartInstance = new Chart(ftpCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'XMLs en FTP',
+                        data: values,
+                        backgroundColor: '#4f46e5',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Requests Doughnut Chart
+        const reqCtx = document.getElementById('requestsChart');
+        if (reqCtx) {
+            if (reqChartInstance) reqChartInstance.destroy();
+            reqChartInstance = new Chart(reqCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Finalizadas', 'Fallidas', 'Pendientes (SAT)'],
+                    datasets: [{
+                        data: [
+                            reqStats.finished || 0,
+                            reqStats.failed || 0,
+                            (reqStats.pending || 0) + (reqStats.accepted || 0)
+                        ],
+                        backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+    };
+
+    document.getElementById('btnSyncAnalytics')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btnSyncAnalytics');
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sincronizando (puede tardar)...';
+        btn.disabled = true;
+        
+        try {
+            const data = await apiCall('api.php?action=sync_analytics', { method: 'POST' });
+            if(data) {
+                showToast(data.message, data.success ? 'success' : 'error');
+                if(data.success) {
+                    loadAnalytics();
+                }
+            }
+        } catch (e) {
+            showToast('Error al sincronizar FTP', 'error');
+        } finally {
+            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i> Sincronizar FTP';
+            btn.disabled = false;
+        }
+    });
+
     // Load Config
     const loadConfig = async () => {
         try {
@@ -463,4 +561,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial load
     loadStatus();
+    loadAnalytics();
 });

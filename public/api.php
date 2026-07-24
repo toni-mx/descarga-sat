@@ -254,6 +254,84 @@ try {
             sendResponse(true, 'Facturas de este mes descargadas instantáneamente con CIEC', ['stats' => $stats]);
             break;
             
+        case 'analytics':
+            $ftpStats = $db->getFtpStats();
+            $requests = $db->getAllRequests();
+            
+            // Aggregate request stats
+            $requestStats = ['finished' => 0, 'failed' => 0, 'pending' => 0, 'accepted' => 0];
+            foreach ($requests as $req) {
+                if (isset($requestStats[$req['status']])) {
+                    $requestStats[$req['status']]++;
+                }
+            }
+            
+            sendResponse(true, 'Analíticas cargadas', [
+                'ftp' => $ftpStats,
+                'requests' => $requestStats
+            ]);
+            break;
+            
+        case 'sync_analytics':
+            $ftpHost = $config->get('FTP_HOST');
+            $ftpUser = $config->get('FTP_USER');
+            $ftpPassEncrypted = $config->get('FTP_PASS', '');
+            
+            if (empty($ftpHost) || empty($ftpUser) || empty($ftpPassEncrypted)) {
+                sendResponse(false, 'Configura el FTP primero para sincronizar analíticas.');
+            }
+            
+            $ftpPass = $config->decrypt($ftpPassEncrypted);
+            $ftpPath = $config->get('FTP_PATH', '/');
+            
+            $conn_id = @ftp_connect($ftpHost, 21, 5);
+            if (!$conn_id || !@ftp_login($conn_id, $ftpUser, $ftpPass)) {
+                sendResponse(false, 'No se pudo conectar al FTP.');
+            }
+            
+            ftp_pasv($conn_id, true);
+            if ($ftpPath !== '/') {
+                @ftp_chdir($conn_id, ltrim($ftpPath, '/'));
+            }
+            
+            $years = ftp_nlist($conn_id, ".");
+            if ($years === false) $years = [];
+            
+            $syncResults = [];
+            foreach ($years as $yearDir) {
+                // Ignore '.' and '..' and non-year folders
+                $year = basename($yearDir);
+                if (preg_match('/^20\d{2}$/', $year)) {
+                    $months = ftp_nlist($conn_id, $yearDir);
+                    if ($months) {
+                        foreach ($months as $monthDir) {
+                            $monthStr = basename($monthDir);
+                            $monthNum = (int)$monthStr;
+                            if ($monthNum >= 1 && $monthNum <= 12) {
+                                // List files
+                                $files = ftp_nlist($conn_id, $monthDir);
+                                $xmlCount = 0;
+                                if ($files) {
+                                    foreach ($files as $file) {
+                                        if (strtolower(pathinfo($file, PATHINFO_EXTENSION)) === 'xml') {
+                                            $xmlCount++;
+                                        }
+                                    }
+                                }
+                                
+                                $periodKey = sprintf("%04d-%02d", (int)$year, $monthNum);
+                                $db->saveFtpStat($periodKey, $xmlCount);
+                                $syncResults[] = "[$periodKey: $xmlCount]";
+                            }
+                        }
+                    }
+                }
+            }
+            
+            @ftp_close($conn_id);
+            sendResponse(true, 'Sincronización completada', ['synced' => count($syncResults)]);
+            break;
+            
         default:
             sendResponse(false, 'Acción no encontrada', [], 404);
             break;

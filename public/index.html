@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/style.css?v=5">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="light-theme">
     <div class="app-layout">
@@ -31,7 +32,12 @@
                 </button>
             </nav>
 
-            <div style="margin-top: auto;">
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 12px;">
+                <div id="autoTrackIndicator" style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px; padding: 0 16px;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite;"></div>
+                    <span>Auto-tracking activo</span>
+                </div>
+                
                 <button id="themeToggle" class="btn btn-outline w-100" style="justify-content: flex-start; color: var(--text-secondary); border: none;">
                     <i class="fa-solid fa-moon"></i> <span id="themeText">Modo Oscuro</span>
                 </button>
@@ -41,10 +47,10 @@
         <main class="workspace">
             <!-- Dashboard Tab -->
             <section id="dashboard" class="view-section active">
-                <div class="view-header">
+                <div class="view-header" style="justify-content: space-between; align-items: flex-end; display: flex;">
                     <div>
-                        <h1>Dashboard</h1>
-                        <div class="actions-bar" style="display: flex; gap: 16px; margin-bottom: 24px;">
+                        <h1>Dashboard Analítico</h1>
+                        <div class="actions-bar" style="display: flex; gap: 16px; margin-top: 16px;">
                             <button class="btn btn-primary" id="btnDownloadToday">
                                 <i class="fa-solid fa-download"></i> Descargar Hoy (e.firma)
                             </button>
@@ -54,6 +60,32 @@
                             <button class="btn btn-outline" id="btnProcessPending">
                                 <i class="fa-solid fa-rotate"></i> Verificar Pendientes
                             </button>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline" id="btnSyncAnalytics">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> Sincronizar FTP
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-grid" style="margin-bottom: 32px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fa-solid fa-chart-column card-icon"></i>
+                            <h2>Volumen Histórico en FTP</h2>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="ftpChart" height="250"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fa-solid fa-chart-pie card-icon"></i>
+                            <h2>Efectividad de Solicitudes</h2>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="requestsChart" height="250"></canvas>
                         </div>
                     </div>
                 </div>
@@ -212,11 +244,13 @@
                                 </div>
                             </form>
                         </div>
-                        <!-- CIEC Settings -->
+                    </div> <!-- End FIEL Settings -->
+
+                    <!-- CIEC Settings -->
                     <div class="card" style="grid-column: 1 / -1;">
                         <div class="card-header">
                             <i class="fa-solid fa-id-card card-icon"></i>
-                            <h2>Credenciales CIEC (Para Canceladas)</h2>
+                            <h2>Credenciales CIEC (Para Canceladas e Instantáneas)</h2>
                         </div>
                         <div class="card-body">
                             <form id="ciecForm" class="settings-form">
@@ -236,7 +270,6 @@
                             </form>
                         </div>
                     </div>
-                </div>
                 </div>
 
                 <div class="card table-card" style="margin-top: 32px; border-color: var(--warning);">
