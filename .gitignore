@@ -2,3 +2,5 @@
 /vendor/
 /tools/
 /composer.lock
+/recursos
+/config

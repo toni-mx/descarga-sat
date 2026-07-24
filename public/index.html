@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAT Sync - Descarga Masiva</title>
+    <link rel="stylesheet" href="css/style.css?v=5">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="light-theme">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-cloud-arrow-down brand-icon" style="color: var(--primary);"></i>
+                <span class="brand-name">SAT Sync</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" data-target="dashboard">
+                    <i class="fa-solid fa-chart-pie"></i> Dashboard
+                </button>
+                <button class="nav-item" data-target="auditoria">
+                    <i class="fa-solid fa-calendar-days"></i> Auditoría Anual
+                </button>
+                <button class="nav-item" data-target="canceladas">
+                    <i class="fa-solid fa-ban"></i> Canceladas
+                </button>
+                <button class="nav-item" data-target="config">
+                    <i class="fa-solid fa-gear"></i> Ajustes
+                </button>
+            </nav>
+
+            <div style="margin-top: auto;">
+                <button id="themeToggle" class="btn btn-outline w-100" style="justify-content: flex-start; color: var(--text-secondary); border: none;">
+                    <i class="fa-solid fa-moon"></i> <span id="themeText">Modo Oscuro</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <!-- Dashboard Tab -->
+            <section id="dashboard" class="view-section active">
+                <div class="view-header">
+                    <div>
+                        <h1>Dashboard</h1>
+                        <div class="actions-bar" style="display: flex; gap: 16px; margin-bottom: 24px;">
+                            <button class="btn btn-primary" id="btnDownloadToday">
+                                <i class="fa-solid fa-download"></i> Descargar Hoy (e.firma)
+                            </button>
+                            <button class="btn btn-primary" id="btnDownloadInstant" style="background-color: var(--warning); color: #000;">
+                                <i class="fa-solid fa-bolt"></i> Descarga Instantánea (CIEC)
+                            </button>
+                            <button class="btn btn-outline" id="btnProcessPending">
+                                <i class="fa-solid fa-rotate"></i> Verificar Pendientes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card table-card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-clock-rotate-left card-icon"></i>
+                        <h2>Historial de Solicitudes</h2>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Request ID</th>
+                                    <th>Periodo</th>
+                                    <th>Estado</th>
+                                    <th>Detalles</th>
+                                    <th>Fecha Solicitud</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTableBody">
+                                <tr>
+                                    <td colspan="5" class="td-placeholder">Cargando datos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Auditoría Tab -->
+            <section id="auditoria" class="view-section">
+                <div class="view-header">
+                    <div>
+                        <h1>Auditoría Anual</h1>
+                        <p class="subtitle">Descarga histórica masiva de un año completo.</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-calendar-check card-icon"></i>
+                        <h2>Auditar Facturas Recibidas</h2>
+                    </div>
+                    <div class="card-body">
+                        <p style="margin-bottom: 1rem;">Selecciona un año. El sistema solicitará al SAT todas las facturas de ese año para cotejarlas contra tu FTP y descargará únicamente las que falten.</p>
+                        <div style="display: flex; gap: 16px; align-items: center;">
+                            <select id="auditYear" class="form-control" style="width: 150px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                                <option value="2023">2023</option>
+                                <option value="2022">2022</option>
+                            </select>
+                            <button class="btn btn-primary" id="btnAuditYear">
+                                <i class="fa-solid fa-play"></i> Iniciar Auditoría
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Canceladas Tab -->
+            <section id="canceladas" class="view-section">
+                <div class="view-header">
+                    <div>
+                        <h1>Facturas Canceladas</h1>
+                        <p class="subtitle">Descarga exclusivamente XMLs cancelados.</p>
+                    </div>
+                </div>
+                <div class="card" style="border-color: var(--danger);">
+                    <div class="card-header" style="background-color: rgba(239,68,68,0.05);">
+                        <i class="fa-solid fa-ban card-icon" style="color: var(--danger);"></i>
+                        <h2 style="color: var(--danger);">Auditoría de Cancelaciones</h2>
+                    </div>
+                    <div class="card-body">
+                        <p style="margin-bottom: 1rem;">Solicita al SAT los XMLs de facturas que han sido canceladas en los últimos 30 días para verificar sus acuses y motivos de cancelación.</p>
+                        <button class="btn btn-outline" style="border-color: var(--danger); color: var(--danger);" id="btnDownloadCancelled">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> Buscar Canceladas (Últimos 30 días)
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Config Tab -->
+            <section id="config" class="view-section">
+                <div class="view-header">
+                    <div>
+                        <h1>Configuración</h1>
+                        <p class="subtitle">Administra tus credenciales y destino FTP</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid">
+                    <!-- FTP Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fa-solid fa-server card-icon"></i>
+                            <h2>Servidor FTP</h2>
+                        </div>
+                        <div class="card-body">
+                            <form id="ftpForm" class="settings-form">
+                                <div class="form-group">
+                                    <label>Host IP</label>
+                                    <input type="text" id="ftpHost" placeholder="Ej. 65.99.225.174" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Usuario</label>
+                                    <input type="text" id="ftpUser" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Contraseña</label>
+                                    <input type="password" id="ftpPass">
+                                </div>
+                                <div class="form-group">
+                                    <label>Ruta Base (Opcional)</label>
+                                    <input type="text" id="ftpPath" value="/" placeholder="/">
+                                </div>
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-primary">Guardar FTP</button>
+                                    <button type="button" id="btnTestFtp" class="btn btn-outline">Probar Conexión</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- FIEL Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fa-solid fa-key card-icon"></i>
+                            <h2>e.firma (FIEL)</h2>
+                        </div>
+                        <div class="card-body">
+                            <form id="fielForm" class="settings-form">
+                                <div class="form-group">
+                                    <label>Certificado (.cer)</label>
+                                    <input type="file" id="cerFile" accept=".cer">
+                                </div>
+                                <div class="form-group">
+                                    <label>Llave Privada (.key)</label>
+                                    <input type="file" id="keyFile" accept=".key">
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="margin-bottom: 24px;">Subir Archivos</button>
+                            </form>
+
+                            <form id="passwordForm" class="settings-form">
+                                <div class="form-group">
+                                    <label>Contraseña Clave Privada</label>
+                                    <input type="password" id="fielPassword" placeholder="••••••••" required>
+                                </div>
+                                <div class="status-indicator" id="pwdStatus">
+                                    Contraseña e.firma no guardada
+                                </div>
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-primary">Guardar Contraseña</button>
+                                    <button type="button" id="btnTestEfirma" class="btn btn-outline">Probar e.firma</button>
+                                </div>
+                            </form>
+                        </div>
+                        <!-- CIEC Settings -->
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <i class="fa-solid fa-id-card card-icon"></i>
+                            <h2>Credenciales CIEC (Para Canceladas)</h2>
+                        </div>
+                        <div class="card-body">
+                            <form id="ciecForm" class="settings-form">
+                                <div class="form-group">
+                                    <label>RFC</label>
+                                    <input type="text" id="rfcInput" placeholder="Ej. ABC123456T1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Contraseña CIEC</label>
+                                    <input type="password" id="ciecInput" placeholder="Contraseña de 8 caracteres">
+                                    <small>Necesaria para descargar facturas canceladas de forma automática mediante IA.</small>
+                                </div>
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-primary">Guardar CIEC</button>
+                                    <button type="button" id="btnTestCiec" class="btn btn-outline">Probar CIEC (Resolver Captcha)</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <div class="card table-card" style="margin-top: 32px; border-color: var(--warning);">
+                    <div class="card-header" style="background-color: rgba(245,158,11,0.05);">
+                        <i class="fa-solid fa-terminal card-icon" style="color: var(--warning);"></i>
+                        <h2 style="color: var(--warning);">Consola de Depuración (Temporal)</h2>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div id="debugConsole" style="background: #000; color: #0f0; font-family: monospace; font-size: 13px; padding: 16px; height: 250px; overflow-y: auto; margin: 0;">
+                            <div style="opacity: 0.7;">> Inicializando consola de sistema...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification system -->
+    <div id="toast" class="toast hidden">
+        <i id="toastIcon" class="fa-solid fa-circle-info"></i>
+        <span id="toastMessage">Mensaje informativo</span>
+    </div>
+
+    <script src="js/app.js?v=6"></script>
+</body>
+</html>

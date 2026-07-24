@@ -36,10 +36,13 @@
         "eclipxe/enum": "^0.2.0",
         "eclipxe/micro-catalog": "^0.1.2",
         "phpcfdi/credentials": "^1.3",
-        "phpcfdi/rfc": "^1.2"
+        "phpcfdi/rfc": "^1.2",
+        "guzzlehttp/guzzle": "^7.2.0",
+        "vlucas/phpdotenv": "^5.6",
+        "phpcfdi/cfdi-sat-scraper": "^5.0",
+        "phpcfdi/image-captcha-resolver-boxfactura-ai": "^0.2.0"
     },
     "require-dev": {
-        "guzzlehttp/guzzle": "^7.2.0",
         "phpunit/phpunit": "^10.5.45",
         "robrichards/xmlseclibs": "^3.1.0"
     },
