@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result && result.data) {
                 tbody.innerHTML = '';
                 if(result.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="td-placeholder">No hay solicitudes recientes</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="td-placeholder">No hay solicitudes recientes</td></tr>';
                     return;
                 }
                 
@@ -117,7 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     tbody.innerHTML += `
                         <tr>
                             <td class="mono" style="font-size: 13px;">${req.request_id || '-'}</td>
+                            <td><span style="font-weight: 500;">${req.request_type || 'Desconocida'}</span></td>
                             <td>${(req.period_start || '').substring(0,10)} al ${(req.period_end || '').substring(0,10)}</td>
+                            <td style="font-weight: bold; color: var(--primary);">${req.xml_count || 0}</td>
                             <td><span class="status-badge ${statusClass}">${translatedStatus}</span></td>
                             <td>${detailsHtml}</td>
                             <td>${req.created_at}</td>
@@ -478,6 +480,28 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Error al verificar pendientes', 'error');
         } finally {
             btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Verificar Pendientes';
+            btn.disabled = false;
+        }
+    });
+
+    // Clear History
+    document.getElementById('btnClearHistory')?.addEventListener('click', async () => {
+        if(!confirm('¿Estás seguro de que deseas limpiar el historial de solicitudes?')) return;
+        
+        const btn = document.getElementById('btnClearHistory');
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Limpiando...';
+        btn.disabled = true;
+        
+        try {
+            const data = await apiCall('api.php?action=clear_history', { method: 'POST' });
+            if(data) {
+                showToast(data.message, data.success ? 'success' : 'error');
+                if(data.success) loadStatus();
+            }
+        } catch (e) {
+            showToast('Error al limpiar el historial', 'error');
+        } finally {
+            btn.innerHTML = '<i class="fa-solid fa-trash"></i> Limpiar Historial';
             btn.disabled = false;
         }
     });

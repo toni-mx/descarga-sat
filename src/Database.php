@@ -35,13 +35,19 @@ class Database
             CREATE TABLE IF NOT EXISTS requests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 request_id TEXT NOT NULL,
+                request_type TEXT NOT NULL DEFAULT 'Desconocida',
                 period_start TEXT NOT NULL,
                 period_end TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending',
                 packages TEXT,
+                xml_count INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ");
+        
+        // Add columns if they don't exist
+        try { $this->pdo->exec("ALTER TABLE requests ADD COLUMN request_type TEXT DEFAULT 'Desconocida'"); } catch (\Exception $e) {}
+        try { $this->pdo->exec("ALTER TABLE requests ADD COLUMN xml_count INTEGER DEFAULT 0"); } catch (\Exception $e) {}
 
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS ftp_stats (
@@ -52,17 +58,45 @@ class Database
         ");
     }
     
-    public function saveRequest(string $requestId, string $start, string $end, string $status = 'pending'): int
+    public function saveRequest(string $requestId, string $start, string $end, string $status = 'pending', string $requestType = 'Desconocida'): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO requests (request_id, period_start, period_end, status) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$requestId, $start, $end, $status]);
+        $stmt = $this->pdo->prepare("INSERT INTO requests (request_id, request_type, period_start, period_end, status) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$requestId, $requestType, $start, $end, $status]);
+        
+        // Log to file
+        $logDir = __DIR__ . '/../logs';
+        if (!is_dir($logDir)) mkdir($logDir, 0777, true);
+        $logFile = $logDir . '/requests.log';
+        $date = date('Y-m-d H:i:s');
+        $logLine = "[$date] TIPO: $requestType | ID: $requestId | PERIODO: $start al $end | ESTADO: $status\n";
+        file_put_contents($logFile, $logLine, FILE_APPEND);
+        
         return (int)$this->pdo->lastInsertId();
     }
     
-    public function updateRequestStatus(string $requestId, string $status, ?string $packages = null): void
+    public function clearRequests(): void
     {
-        $stmt = $this->pdo->prepare("UPDATE requests SET status = ?, packages = ? WHERE request_id = ?");
-        $stmt->execute([$status, $packages, $requestId]);
+        $this->pdo->exec("DELETE FROM requests");
+        
+        $logDir = __DIR__ . '/../logs';
+        if (!is_dir($logDir)) mkdir($logDir, 0777, true);
+        $logFile = $logDir . '/requests.log';
+        $date = date('Y-m-d H:i:s');
+        file_put_contents($logFile, "[$date] --- HISTORIAL LIMPIADO POR EL USUARIO ---\n", FILE_APPEND);
+    }
+    
+    public function updateRequestStatus(string $requestId, string $status, ?string $packages = null, int $xmlCount = 0): void
+    {
+        $stmt = $this->pdo->prepare("UPDATE requests SET status = ?, packages = ?, xml_count = ? WHERE request_id = ?");
+        $stmt->execute([$status, $packages, $xmlCount, $requestId]);
+        
+        // Log status update
+        $logDir = __DIR__ . '/../logs';
+        if (!is_dir($logDir)) mkdir($logDir, 0777, true);
+        $logFile = $logDir . '/requests.log';
+        $date = date('Y-m-d H:i:s');
+        $logLine = "[$date] UPDATE | ID: $requestId | ESTADO: $status | XMLS: $xmlCount\n";
+        file_put_contents($logFile, $logLine, FILE_APPEND);
     }
     
     public function getPendingRequests(): array

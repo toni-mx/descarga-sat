@@ -167,7 +167,7 @@ try {
             $endDate = date('Y-m-d H:i:s');
             
             $result = $satService->requestDownload($startDate, $endDate, 'received');
-            $db->saveRequest($result['request_id'], $startDate, $endDate);
+            $db->saveRequest($result['request_id'], $startDate, $endDate, 'pending', 'Descargar Hoy (FIEL)');
             
             sendResponse(true, 'Solicitud enviada al SAT', ['request_id' => $result['request_id']]);
             break;
@@ -189,7 +189,7 @@ try {
                             'stats' => $stats
                         ];
                         
-                        $db->updateRequestStatus($req['request_id'], 'finished', json_encode($summary));
+                        $db->updateRequestStatus($req['request_id'], 'finished', json_encode($summary), $stats['total_xmls'] ?? 0);
                         $results[] = "ID {$req['request_id']}: Finalizado. {$stats['total_xmls']} descargadas, {$stats['new_xmls']} nuevas.";
                     } elseif ($verifyResult['status'] === 'failed') {
                         $db->updateRequestStatus($req['request_id'], 'failed');
@@ -220,7 +220,7 @@ try {
             
             $satService = new SatService($config);
             $result = $satService->requestDownload($startDate, $endDate, $type, 'active');
-            $db->saveRequest($result['request_id'], $startDate, $endDate);
+            $db->saveRequest($result['request_id'], $startDate, $endDate, 'pending', 'Auditoría Anual (FIEL)');
             
             sendResponse(true, "Auditoría encolada para el año $year", ['request_id' => $result['request_id']]);
             break;
@@ -235,6 +235,10 @@ try {
             $scraperService = new ScraperService($config);
             $stats = $scraperService->download($startDate, $endDate, 'cancelled');
             
+            $reqId = 'CANCELADAS-' . uniqid();
+            $db->saveRequest($reqId, $startDate, $endDate, 'finished', 'Auditoría Canceladas (CIEC)');
+            $db->updateRequestStatus($reqId, 'finished', json_encode(['stats' => $stats]), $stats['total_xmls'] ?? 0);
+            
             sendResponse(true, 'Facturas canceladas descargadas correctamente usando CIEC', ['stats' => $stats]);
             break;
             
@@ -248,12 +252,18 @@ try {
             $scraperService = new ScraperService($config);
             $stats = $scraperService->download($startDate, $endDate, 'active');
             
-            // Log to database as a finished request
-            $db->saveRequest('CIEC-' . uniqid(), $startDate, $endDate, 'finished');
+            $reqId = 'INSTANT-' . uniqid();
+            $db->saveRequest($reqId, $startDate, $endDate, 'finished', 'Descarga Instantánea (CIEC)');
+            $db->updateRequestStatus($reqId, 'finished', json_encode(['stats' => $stats]), $stats['total_xmls'] ?? 0);
             
-            sendResponse(true, 'Facturas de este mes descargadas instantáneamente con CIEC', ['stats' => $stats]);
+            sendResponse(true, 'Facturas de este mes descargadas instantáneamente usando CIEC', ['stats' => $stats]);
             break;
             
+        case 'clear_history':
+            $db->clearRequests();
+            sendResponse(true, 'Historial limpiado correctamente.');
+            break;
+
         case 'analytics':
             $ftpStats = $db->getFtpStats();
             $requests = $db->getAllRequests();
