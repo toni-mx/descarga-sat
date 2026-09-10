@@ -48,6 +48,11 @@ class Database
         // Add columns if they don't exist
         try { $this->pdo->exec("ALTER TABLE requests ADD COLUMN request_type TEXT DEFAULT 'Desconocida'"); } catch (\Exception $e) {}
         try { $this->pdo->exec("ALTER TABLE requests ADD COLUMN xml_count INTEGER DEFAULT 0"); } catch (\Exception $e) {}
+        
+        // Fix any records stored in UTC previously that appear in the future
+        try {
+            $this->pdo->exec("UPDATE requests SET created_at = datetime(created_at, '-6 hours') WHERE created_at > '2026-09-09 23:59:59'");
+        } catch (\Exception $e) {}
 
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS ftp_stats (
@@ -60,14 +65,15 @@ class Database
     
     public function saveRequest(string $requestId, string $start, string $end, string $status = 'pending', string $requestType = 'Desconocida'): int
     {
-        $stmt = $this->pdo->prepare("INSERT INTO requests (request_id, request_type, period_start, period_end, status) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$requestId, $requestType, $start, $end, $status]);
+        date_default_timezone_set('America/Mexico_City');
+        $date = date('Y-m-d H:i:s');
+        $stmt = $this->pdo->prepare("INSERT INTO requests (request_id, request_type, period_start, period_end, status, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$requestId, $requestType, $start, $end, $status, $date]);
         
         // Log to file
         $logDir = __DIR__ . '/../logs';
         if (!is_dir($logDir)) mkdir($logDir, 0777, true);
         $logFile = $logDir . '/requests.log';
-        $date = date('Y-m-d H:i:s');
         $logLine = "[$date] TIPO: $requestType | ID: $requestId | PERIODO: $start al $end | ESTADO: $status\n";
         file_put_contents($logFile, $logLine, FILE_APPEND);
         
@@ -81,6 +87,7 @@ class Database
         $logDir = __DIR__ . '/../logs';
         if (!is_dir($logDir)) mkdir($logDir, 0777, true);
         $logFile = $logDir . '/requests.log';
+        date_default_timezone_set('America/Mexico_City');
         $date = date('Y-m-d H:i:s');
         file_put_contents($logFile, "[$date] --- HISTORIAL LIMPIADO POR EL USUARIO ---\n", FILE_APPEND);
     }
@@ -94,6 +101,7 @@ class Database
         $logDir = __DIR__ . '/../logs';
         if (!is_dir($logDir)) mkdir($logDir, 0777, true);
         $logFile = $logDir . '/requests.log';
+        date_default_timezone_set('America/Mexico_City');
         $date = date('Y-m-d H:i:s');
         $logLine = "[$date] UPDATE | ID: $requestId | ESTADO: $status | XMLS: $xmlCount\n";
         file_put_contents($logFile, $logLine, FILE_APPEND);
@@ -119,13 +127,15 @@ class Database
     
     public function saveFtpStat(string $month, int $count): void
     {
+        date_default_timezone_set('America/Mexico_City');
+        $now = date('Y-m-d H:i:s');
         $stmt = $this->pdo->prepare("
             INSERT INTO ftp_stats (month, xml_count, updated_at) 
-            VALUES (?, ?, CURRENT_TIMESTAMP) 
+            VALUES (?, ?, ?) 
             ON CONFLICT(month) DO UPDATE SET 
             xml_count = excluded.xml_count, 
-            updated_at = CURRENT_TIMESTAMP
+            updated_at = excluded.updated_at
         ");
-        $stmt->execute([$month, $count]);
+        $stmt->execute([$month, $count, $now]);
     }
 }

@@ -157,25 +157,46 @@ class SatService
                 foreach ($cfdiReader->cfdis() as $uuid => $content) {
                     $stats['total_xmls']++;
                     
+                    // Extract date from XML
+                    $year = date('Y');
+                    $month = date('m');
+                    if (preg_match('/Fecha="(\d{4})-(\d{2})-\d{2}T/', $content, $matches)) {
+                        $year = $matches[1];
+                        $month = $matches[2];
+                    }
+                    
+                    $monthName = $this->getMonthName($month);
+                    
+                    // 1. Local Storage Backup
+                    $localBase = __DIR__ . '/../data/facturas';
+                    $localFolder = $localBase . '/' . $year . '/' . $monthName;
+                    if (!is_dir($localFolder)) {
+                        mkdir($localFolder, 0777, true);
+                    }
+                    $localPath = $localFolder . '/' . $uuid . '.xml';
+                    
+                    // Save locally if it doesn't exist
+                    if (!file_exists($localPath)) {
+                        file_put_contents($localPath, $content);
+                    }
+                    
+                    // 2. FTP Upload
                     if ($conn_id) {
-                        // Extract date from XML
-                        $year = date('Y');
-                        $month = date('m');
-                        if (preg_match('/Fecha="(\d{4})-(\d{2})-\d{2}T/', $content, $matches)) {
-                            $year = $matches[1];
-                            $month = $matches[2];
-                        }
-                        
-                        $monthName = $this->getMonthName($month);
                         $targetFolder = $year . '/' . $monthName;
                         
                         // Create directories and navigate to them
                         $this->ftp_mksubdirs($conn_id, $ftpPath, $targetFolder);
                         
-                        // Check if file already exists
-                        $size = @ftp_size($conn_id, "$uuid.xml");
+                        // Get list of existing files
+                        $existingFiles = [];
+                        $rawFiles = ftp_nlist($conn_id, ".");
+                        if (is_array($rawFiles)) {
+                            foreach ($rawFiles as $f) {
+                                $existingFiles[] = basename($f);
+                            }
+                        }
                         
-                        if ($size === -1) {
+                        if (!in_array("$uuid.xml", $existingFiles)) {
                             // File does not exist, so it is new!
                             $stats['new_xmls']++;
                             $stats['new_uuids'][] = [
@@ -183,16 +204,13 @@ class SatService
                                 'date' => "$year-$month"
                             ];
                             
-                            $xmlPath = sys_get_temp_dir() . "/$uuid.xml";
-                            file_put_contents($xmlPath, $content);
-                            ftp_put($conn_id, "$uuid.xml", $xmlPath, FTP_ASCII);
-                            @unlink($xmlPath);
+                            ftp_put($conn_id, "$uuid.xml", $localPath, FTP_ASCII);
                         }
                         
                         // Return to base path
                         @ftp_chdir($conn_id, $ftpPath);
                     }
-                }
+                } // End foreach cfdis
                 
                 // Forzar liberación del archivo ZIP para evitar Resource temporarily unavailable
                 unset($cfdiReader);

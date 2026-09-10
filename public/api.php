@@ -5,6 +5,7 @@ namespace PhpCfdi\SatWsDescargaMasiva;
 ob_start();
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
+date_default_timezone_set('America/Mexico_City');
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -340,6 +341,127 @@ try {
             
             @ftp_close($conn_id);
             sendResponse(true, 'Sincronización completada', ['synced' => count($syncResults)]);
+            break;
+
+        case 'verify_sync':
+            // Verification process to ensure Local Folder matches FTP Folder
+            $ftpHost = $config->get('FTP_HOST');
+            $ftpUser = $config->get('FTP_USER');
+            $ftpPassEncrypted = $config->get('FTP_PASS', '');
+            
+            if (empty($ftpHost) || empty($ftpUser) || empty($ftpPassEncrypted)) {
+                sendResponse(false, 'Configura el FTP primero para verificar sincronización.');
+            }
+            
+            $ftpPass = $config->decrypt($ftpPassEncrypted);
+            $ftpPath = $config->get('FTP_PATH', '/');
+            
+            $conn_id = @ftp_connect($ftpHost, 21, 5);
+            if (!$conn_id || !@ftp_login($conn_id, $ftpUser, $ftpPass)) {
+                sendResponse(false, 'No se pudo conectar al FTP.');
+            }
+            
+            ftp_pasv($conn_id, true);
+            
+            $localBase = realpath(__DIR__ . '/../data/facturas');
+            $missingUploaded = 0;
+            $details = [];
+            
+            if ($localBase) {
+                // Loop through Years
+                foreach (scandir($localBase) as $year) {
+                    if ($year === '.' || $year === '..') continue;
+                    $yearDir = $localBase . '/' . $year;
+                    if (!is_dir($yearDir)) continue;
+                    
+                    // Loop through Months
+                    foreach (scandir($yearDir) as $month) {
+                        if ($month === '.' || $month === '..') continue;
+                        $monthDir = $yearDir . '/' . $month;
+                        if (!is_dir($monthDir)) continue;
+                        
+                        // Check FTP Path
+                        $ftpTarget = rtrim($ftpPath, '/') . '/' . $year . '/' . $month;
+                        @ftp_chdir($conn_id, $ftpPath);
+                        
+                        // Navigate to folder and create if missing
+                        $parts = explode('/', trim($year . '/' . $month, '/'));
+                        foreach ($parts as $part) {
+                            if (!@ftp_chdir($conn_id, $part)) {
+                                @ftp_pasv($conn_id, true);
+                                ftp_mkdir($conn_id, $part);
+                                ftp_chdir($conn_id, $part);
+                            }
+                        }
+                        
+                        // Refresh pasv mode
+                        @ftp_pasv($conn_id, true);
+                        
+                        // Get list of files in FTP folder
+                        $ftpFiles = [];
+                        $rawFtpFiles = @ftp_nlist($conn_id, ".");
+                        if (is_array($rawFtpFiles)) {
+                            foreach ($rawFtpFiles as $f) {
+                                $ftpFiles[] = basename($f); // Removes './' if present
+                            }
+                        } else {
+                            // If ftp_nlist fails, try reconnecting
+                            @ftp_close($conn_id);
+                            $conn_id = @ftp_connect($ftpHost, 21, 5);
+                            if ($conn_id && @ftp_login($conn_id, $ftpUser, $ftpPass)) {
+                                @ftp_pasv($conn_id, true);
+                                @ftp_chdir($conn_id, $ftpPath);
+                                foreach ($parts as $part) @ftp_chdir($conn_id, $part);
+                                $rawFtpFiles = @ftp_nlist($conn_id, ".");
+                                if (is_array($rawFtpFiles)) {
+                                    foreach ($rawFtpFiles as $f) {
+                                        $ftpFiles[] = basename($f);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // List local XML files
+                        $localFiles = glob($monthDir . '/*.xml');
+                        foreach ($localFiles as $localFile) {
+                            $filename = basename($localFile);
+                            
+                            // Check if file exists on FTP
+                            if (!in_array($filename, $ftpFiles)) {
+                                // Missing! Upload it.
+                                @ftp_pasv($conn_id, true);
+                                $putResult = @ftp_put($conn_id, $filename, $localFile, FTP_BINARY);
+                                if (!$putResult) {
+                                    // Reconnect and retry once
+                                    @ftp_close($conn_id);
+                                    $conn_id = @ftp_connect($ftpHost, 21, 5);
+                                    if ($conn_id && @ftp_login($conn_id, $ftpUser, $ftpPass)) {
+                                        @ftp_pasv($conn_id, true);
+                                        @ftp_chdir($conn_id, $ftpPath);
+                                        foreach ($parts as $part) @ftp_chdir($conn_id, $part);
+                                        $putResult = @ftp_put($conn_id, $filename, $localFile, FTP_BINARY);
+                                    }
+                                }
+                                
+                                if ($putResult) {
+                                    $missingUploaded++;
+                                    $details[] = "UPLOADED: $year/$month/$filename";
+                                } else {
+                                    $details[] = "FAILED: $year/$month/$filename";
+                                }
+                            }
+                        }
+                        
+                        @ftp_chdir($conn_id, $ftpPath);
+                    }
+                }
+            }
+            
+            @ftp_close($conn_id);
+            sendResponse(true, "Verificación completada. $missingUploaded archivos subidos.", [
+                'uploaded' => $missingUploaded,
+                'details' => $details
+            ]);
             break;
             
         default:

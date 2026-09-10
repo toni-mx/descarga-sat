@@ -133,30 +133,74 @@ class ScraperService {
             $uuid = basename($file, '.xml');
             $content = file_get_contents($file);
             
+            // Extract date from XML
+            $year = date('Y');
+            $month = date('m');
+            if (preg_match('/Fecha="(\d{4})-(\d{2})-\d{2}T/', $content, $matches)) {
+                $year = $matches[1];
+                $month = $matches[2];
+            }
+            
+            if ($month === '01') $monthName = 'enero';
+            else if ($month === '02') $monthName = 'febrero';
+            else if ($month === '03') $monthName = 'marzo';
+            else if ($month === '04') $monthName = 'abril';
+            else if ($month === '05') $monthName = 'mayo';
+            else if ($month === '06') $monthName = 'junio';
+            else if ($month === '07') $monthName = 'julio';
+            else if ($month === '08') $monthName = 'agosto';
+            else if ($month === '09') $monthName = 'septiembre';
+            else if ($month === '10') $monthName = 'octubre';
+            else if ($month === '11') $monthName = 'noviembre';
+            else if ($month === '12') $monthName = 'diciembre';
+            
+            // 1. Local Storage Backup
+            $localBase = __DIR__ . '/../data/facturas';
+            $localFolder = $localBase . '/' . $year . '/' . $monthName;
+            if (!is_dir($localFolder)) {
+                mkdir($localFolder, 0777, true);
+            }
+            $localPath = $localFolder . '/' . $uuid . '.xml';
+            
+            // Save locally if it doesn't exist
+            if (!file_exists($localPath)) {
+                file_put_contents($localPath, $content);
+            }
+            
+            // 2. FTP Upload
             if ($conn_id) {
-                // Extract date from XML
-                $year = date('Y');
-                $month = date('m');
-                if (preg_match('/Fecha="(\d{4})-(\d{2})-\d{2}T/', $content, $matches)) {
-                    $year = $matches[1];
-                    $month = $matches[2];
-                }
-                
-                $monthName = $this->getMonthName($month);
                 $targetFolder = $year . '/' . $monthName;
                 
-                $this->ftp_mksubdirs($conn_id, $ftpPath, $targetFolder);
+                // Create directories and navigate to them
+                @ftp_chdir($conn_id, $ftpPath);
+                $parts = explode('/', trim($targetFolder, '/'));
+                foreach ($parts as $part) {
+                    if (!@ftp_chdir($conn_id, $part)) {
+                        ftp_mkdir($conn_id, $part);
+                        ftp_chdir($conn_id, $part);
+                    }
+                }
                 
-                $size = @ftp_size($conn_id, "$uuid.xml");
-                if ($size === -1) {
+                // Get existing files
+                $existingFiles = [];
+                $rawFiles = ftp_nlist($conn_id, ".");
+                if (is_array($rawFiles)) {
+                    foreach ($rawFiles as $f) {
+                        $existingFiles[] = basename($f);
+                    }
+                }
+                
+                if (!in_array("$uuid.xml", $existingFiles)) {
                     $stats['new_xmls']++;
                     $stats['new_uuids'][] = [
                         'uuid' => $uuid,
                         'date' => "$year-$month"
                     ];
                     
-                    ftp_put($conn_id, "$uuid.xml", $file, FTP_ASCII);
+                    ftp_put($conn_id, "$uuid.xml", $localPath, FTP_ASCII);
                 }
+                
+                // Return to base path
                 @ftp_chdir($conn_id, $ftpPath);
             }
             unlink($file);

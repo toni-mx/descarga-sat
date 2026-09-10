@@ -130,22 +130,52 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
     }
 
+    // App Logger for debugging console
+    window.appLog = function(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logMsg = `[${timestamp}] ${message}`;
+        console.log(logMsg);
+        
+        const debugConsole = document.getElementById('debugConsole');
+        if (debugConsole) {
+            const div = document.createElement('div');
+            div.textContent = `> ${logMsg}`;
+            debugConsole.appendChild(div);
+            debugConsole.scrollTop = debugConsole.scrollHeight;
+        }
+    };
+
     // Auto-tracking: Check pending requests every 2 minutes
     setInterval(async () => {
         const hasPending = document.querySelector('.status-pending, .status-accepted');
         if (hasPending) {
-            console.log("Auto-tracking: Verificando pendientes...");
+            appLog("Auto-tracking: Verificando pendientes en el SAT...");
             try {
                 const data = await apiCall('api.php?action=process_pending', { method: 'POST' }, true);
                 if (data && data.success) {
-                    // Check if any finished message
                     const finished = data.details.some(msg => msg.includes('Finalizado'));
                     if (finished) {
+                        appLog("Auto-tracking: Solicitud completada. Ejecutando Sincronización FTP automática...");
                         showToast('¡Nuevos XMLs descargados y subidos al FTP!', 'success');
+                        
+                        // Auto-sync analytics without human intervention
+                        try {
+                            const syncData = await apiCall('api.php?action=sync_analytics', { method: 'POST' }, true);
+                            if (syncData && syncData.success) {
+                                appLog("Sincronización FTP completada automáticamente.");
+                                loadAnalytics();
+                            }
+                        } catch (err) {
+                            appLog("Error en sincronización FTP automática.");
+                        }
+                    } else {
+                        if (data.details.length > 0) appLog(`Auto-tracking: ${data.details.join(', ')}`);
                     }
                     loadStatus();
                 }
-            } catch(e) {}
+            } catch(e) {
+                appLog("Auto-tracking falló en esta iteración.");
+            }
         }
     }, 120000); // 120,000 ms = 2 minutes
 
@@ -247,32 +277,94 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.getElementById('btnVerifySync')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btnVerifySync');
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verificando (puede tardar)...';
+        btn.disabled = true;
+        appLog("Iniciando Verificación de Integridad FTP vs Local...");
+        
+        try {
+            const data = await apiCall('api.php?action=verify_sync', { method: 'POST' });
+            if(data) {
+                showToast(data.message, data.success ? 'success' : 'error');
+                if(data.success) {
+                    appLog(`Verificación completada. Archivos faltantes subidos: ${data.uploaded}`);
+                    if (data.uploaded > 0) {
+                        appLog(`Archivos subidos: ${data.details.join(', ')}`);
+                        // Refresh analytics to show newly uploaded files
+                        loadAnalytics();
+                    }
+                } else {
+                    appLog(`Error en verificación: ${data.message}`);
+                }
+            }
+        } catch (e) {
+            appLog("Error al verificar integridad de FTP.");
+            showToast('Error al verificar FTP', 'error');
+        } finally {
+            btn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Verificar Integridad';
+            btn.disabled = false;
+        }
+    });
+
+    // Helper to toggle form lock
+    const toggleFormLock = (formId, editBtnId, saveBtnId, locked) => {
+        const form = document.getElementById(formId);
+        const editBtn = document.getElementById(editBtnId);
+        const saveBtn = document.getElementById(saveBtnId);
+        
+        Array.from(form.elements).forEach(el => {
+            if (el.tagName === 'INPUT') el.disabled = locked;
+        });
+        
+        if (editBtn) editBtn.style.display = locked ? 'inline-flex' : 'none';
+        if (saveBtn) saveBtn.style.display = locked ? 'none' : 'inline-flex';
+    };
+
     // Load Config
     const loadConfig = async () => {
         try {
             const data = await apiCall('api.php?action=get_config');
             if (data && data.success) {
-                document.getElementById('ftpHost').value = data.data.ftp_host;
-                document.getElementById('ftpUser').value = data.data.ftp_user;
-                document.getElementById('ftpPath').value = data.data.ftp_path;
-                document.getElementById('rfcInput').value = data.data.rfc || '';
+                const config = data.data;
                 
-                if (data.data.fiel_password_set) {
+                // Set FTP
+                document.getElementById('ftpHost').value = config.ftp_host || '';
+                document.getElementById('ftpUser').value = config.ftp_user || '';
+                document.getElementById('ftpPath').value = config.ftp_path || '/';
+                if (config.ftp_password_set) document.getElementById('ftpPass').placeholder = "••••••••";
+                
+                if (config.ftp_host) toggleFormLock('ftpForm', 'btnEditFtp', 'btnSaveFtp', true);
+                
+                // Set FIEL
+                if (config.fiel_password_set) {
                     document.getElementById('pwdStatus').textContent = "Contraseña e.firma guardada";
                     document.getElementById('pwdStatus').className = "status-indicator text-success";
+                    document.getElementById('fielPassword').placeholder = "••••••••";
+                    toggleFormLock('passwordForm', 'btnEditFielPwd', 'btnSaveFielPwd', true);
+                    
+                    // We assume certificates are uploaded if password is set to simplify the UI
+                    toggleFormLock('fielForm', 'btnEditFielFiles', 'btnSaveFiel', true);
                 }
                 
-                if (data.data.ciec_password_set) {
-                    document.getElementById('ciecInput').placeholder = "••••••••";
-                }
-                if (data.data.ftp_password_set) {
-                    document.getElementById('ftpPass').placeholder = "••••••••";
+                // Set CIEC
+                document.getElementById('rfcInput').value = config.rfc || '';
+                if (config.ciec_password_set) document.getElementById('ciecInput').placeholder = "••••••••";
+                
+                if (config.rfc && config.ciec_password_set) {
+                    toggleFormLock('ciecForm', 'btnEditCiec', 'btnSaveCiec', true);
                 }
             }
         } catch (e) {
             console.error(e);
         }
     };
+    
+    // Add Edit Button Listeners
+    document.getElementById('btnEditFtp')?.addEventListener('click', () => toggleFormLock('ftpForm', 'btnEditFtp', 'btnSaveFtp', false));
+    document.getElementById('btnEditFielPwd')?.addEventListener('click', () => toggleFormLock('passwordForm', 'btnEditFielPwd', 'btnSaveFielPwd', false));
+    document.getElementById('btnEditFielFiles')?.addEventListener('click', () => toggleFormLock('fielForm', 'btnEditFielFiles', 'btnSaveFiel', false));
+    document.getElementById('btnEditCiec')?.addEventListener('click', () => toggleFormLock('ciecForm', 'btnEditCiec', 'btnSaveCiec', false));
 
     // Form Submissions
     document.getElementById('ftpForm').addEventListener('submit', async (e) => {
@@ -422,14 +514,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('btnDownloadToday');
         btn.innerHTML = 'Solicitando...';
         btn.disabled = true;
+        appLog("Iniciando Descarga Hoy (e.firma)...");
         
         try {
             const data = await apiCall('api.php?action=download_today', { method: 'POST' });
             if(data) {
                 showToast(data.message, data.success ? 'success' : 'error');
-                if(data.success) loadStatus();
+                if(data.success) {
+                    appLog(`Solicitud al SAT enviada. ID: ${data.data?.request_id}`);
+                    loadStatus();
+                } else {
+                    appLog(`Fallo en Descarga Hoy: ${data.message}`);
+                }
             }
         } catch (e) {
+            appLog("Excepción en Descarga Hoy.");
             showToast('Error al solicitar descarga al SAT', 'error');
         } finally {
             btn.innerHTML = '<i class="fa-solid fa-download"></i> Descargar Hoy (e.firma)';
@@ -442,17 +541,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('btnDownloadInstant');
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Solicitando con IA (puede tardar minutos)...';
         btn.disabled = true;
+        appLog("Iniciando Descarga Instantánea (CIEC) - Resolviendo Captcha de fondo...");
         
         try {
             const data = await apiCall('api.php?action=download_ciec_instant', { method: 'POST' });
             if(data) {
                 showToast(data.message, data.success ? 'success' : 'error');
                 if(data.success && data.stats) {
+                    appLog(`Descarga Instantánea completada. XMLs nuevos subidos: ${data.stats.new_xmls}`);
                     alert(`PROCESO COMPLETADO\nFacturas leídas (este mes): ${data.stats.total_xmls}\nNuevas subidas al FTP: ${data.stats.new_xmls}`);
+                    
+                    // Auto-sync analytics without human intervention
+                    appLog("Ejecutando Sincronización FTP automática...");
+                    try {
+                        const syncData = await apiCall('api.php?action=sync_analytics', { method: 'POST' }, true);
+                        if (syncData && syncData.success) {
+                            appLog("Sincronización FTP completada automáticamente.");
+                            loadAnalytics();
+                        }
+                    } catch (err) {}
+                    
                     loadStatus();
+                } else {
+                    appLog(`Fallo en Descarga Instantánea: ${data.message}`);
                 }
             }
         } catch (e) {
+            appLog("Excepción en Descarga Instantánea.");
             showToast('Error en descarga instantánea', 'error');
         } finally {
             btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Descarga Instantánea (CIEC)';
@@ -460,11 +575,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Process Pending
+    // Process Pending (Manual)
     document.getElementById('btnProcessPending').addEventListener('click', async () => {
         const btn = document.getElementById('btnProcessPending');
         btn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Verificando...';
         btn.disabled = true;
+        appLog("Verificación manual de pendientes iniciada...");
         
         try {
             const data = await apiCall('api.php?action=process_pending', { method: 'POST' });
@@ -472,11 +588,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(data.message, data.success ? 'success' : 'error');
                 if(data.success) {
                     const finished = data.details.some(msg => msg.includes('Finalizado'));
-                    if (finished) showToast('¡Nuevos XMLs descargados y subidos al FTP!', 'success');
+                    if (finished) {
+                        appLog("Verificación manual: Encontrados XMLs nuevos listos.");
+                        showToast('¡Nuevos XMLs descargados y subidos al FTP!', 'success');
+                        
+                        // Auto-sync analytics
+                        appLog("Ejecutando Sincronización FTP automática...");
+                        try {
+                            const syncData = await apiCall('api.php?action=sync_analytics', { method: 'POST' }, true);
+                            if (syncData && syncData.success) {
+                                appLog("Sincronización FTP completada automáticamente.");
+                                loadAnalytics();
+                            }
+                        } catch (err) {}
+                    } else {
+                        appLog(`Verificación manual: ${data.details.join(', ')}`);
+                    }
                     loadStatus();
+                } else {
+                    appLog(`Fallo en verificación manual: ${data.message}`);
                 }
             }
         } catch (e) {
+            appLog("Excepción en verificación manual.");
             showToast('Error al verificar pendientes', 'error');
         } finally {
             btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Verificar Pendientes';
@@ -491,14 +625,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('btnClearHistory');
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Limpiando...';
         btn.disabled = true;
+        appLog("Limpiando historial de solicitudes...");
         
         try {
             const data = await apiCall('api.php?action=clear_history', { method: 'POST' });
             if(data) {
                 showToast(data.message, data.success ? 'success' : 'error');
-                if(data.success) loadStatus();
+                if(data.success) {
+                    appLog("Historial limpiado correctamente.");
+                    loadStatus();
+                }
             }
         } catch (e) {
+            appLog("Error al limpiar el historial.");
             showToast('Error al limpiar el historial', 'error');
         } finally {
             btn.innerHTML = '<i class="fa-solid fa-trash"></i> Limpiar Historial';
@@ -512,17 +651,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const year = document.getElementById('auditYear').value;
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Solicitando...';
         btn.disabled = true;
+        appLog(`Iniciando Auditoría Anual (FIEL) para el año ${year}...`);
         
         try {
             const data = await apiCall(`api.php?action=audit_year&year=${year}`, { method: 'POST' });
             if(data) {
                 showToast(data.message, data.success ? 'success' : 'error');
                 if(data.success) {
+                    appLog(`Auditoría Anual encolada en el SAT. ID: ${data.data?.request_id}`);
                     switchTab('dashboard');
                     loadStatus();
+                } else {
+                    appLog(`Fallo al encolar Auditoría: ${data.message}`);
                 }
             }
         } catch (e) {
+            appLog("Excepción en Auditoría Anual.");
             showToast('Error al solicitar auditoría al SAT', 'error');
         } finally {
             btn.innerHTML = '<i class="fa-solid fa-play"></i> Iniciar Auditoría';
@@ -535,17 +679,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('btnDownloadCancelled');
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Solicitando e interactuando con IA (puede tardar minutos)...';
         btn.disabled = true;
+        appLog("Iniciando Auditoría Canceladas (CIEC) - Resolviendo Captcha de fondo...");
         
         try {
             const data = await apiCall('api.php?action=download_cancelled', { method: 'POST' });
             if(data) {
                 showToast(data.message, data.success ? 'success' : 'error');
                 if(data.success && data.stats) {
-                    alert(`PROCESO COMPLETADO\nFacturas leídas: ${data.stats.total_xmls}\nNuevas subidas al FTP: ${data.stats.new_xmls}`);
+                    appLog(`Auditoría Canceladas completada. XMLs nuevos subidos: ${data.stats.new_xmls}`);
+                    alert(`PROCESO COMPLETADO\nFacturas canceladas leídas: ${data.stats.total_xmls}\nNuevas subidas al FTP: ${data.stats.new_xmls}`);
+                    
+                    appLog("Ejecutando Sincronización FTP automática...");
+                    try {
+                        const syncData = await apiCall('api.php?action=sync_analytics', { method: 'POST' }, true);
+                        if (syncData && syncData.success) {
+                            appLog("Sincronización FTP completada automáticamente.");
+                            loadAnalytics();
+                        }
+                    } catch (err) {}
+                    
+                    switchTab('dashboard');
+                    loadStatus();
+                } else {
+                    appLog(`Fallo en Canceladas: ${data.message}`);
                 }
             }
         } catch (e) {
-            showToast('Error al solicitar canceladas al SAT', 'error');
+            appLog("Excepción en Auditoría Canceladas.");
+            showToast('Error al descargar facturas canceladas', 'error');
         } finally {
             btn.innerHTML = '<i class="fa-solid fa-file-invoice-dollar"></i> Buscar Canceladas (Últimos 30 días)';
             btn.disabled = false;

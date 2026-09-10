@@ -13,10 +13,14 @@
 <body class="light-theme">
     <div class="app-layout">
         <aside class="sidebar">
-            <div class="brand">
+            <div class="brand" style="margin-bottom: 12px;">
                 <i class="fa-solid fa-cloud-arrow-down brand-icon" style="color: var(--primary);"></i>
                 <span class="brand-name">SAT Sync</span>
             </div>
+            
+            <button id="themeToggle" class="btn btn-outline w-100" style="justify-content: flex-start; color: var(--text-secondary); border: none; margin-bottom: 24px; padding-left: 20px;">
+                <i class="fa-solid fa-moon"></i> <span id="themeText">Modo Oscuro</span>
+            </button>
             
             <nav class="nav-menu">
                 <button class="nav-item active" data-target="dashboard">
@@ -38,10 +42,6 @@
                     <div style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite;"></div>
                     <span>Auto-tracking activo</span>
                 </div>
-                
-                <button id="themeToggle" class="btn btn-outline w-100" style="justify-content: flex-start; color: var(--text-secondary); border: none;">
-                    <i class="fa-solid fa-moon"></i> <span id="themeText">Modo Oscuro</span>
-                </button>
             </div>
         </aside>
 
@@ -63,9 +63,12 @@
                             </button>
                         </div>
                     </div>
-                    <div>
+                    <div style="display: flex; gap: 8px; flex-direction: column; align-items: flex-end;">
                         <button class="btn btn-outline" id="btnSyncAnalytics">
                             <i class="fa-solid fa-cloud-arrow-down"></i> Sincronizar FTP
+                        </button>
+                        <button class="btn btn-outline" id="btnVerifySync" style="border-color: var(--primary); color: var(--primary); font-size: 0.8rem; padding: 4px 8px;">
+                            <i class="fa-solid fa-shield-halved"></i> Verificar Integridad
                         </button>
                     </div>
                 </div>
@@ -212,7 +215,8 @@
                                     <input type="text" id="ftpPath" value="/" placeholder="/">
                                 </div>
                                 <div class="btn-group">
-                                    <button type="submit" class="btn btn-primary">Guardar FTP</button>
+                                    <button type="submit" id="btnSaveFtp" class="btn btn-primary">Guardar FTP</button>
+                                    <button type="button" id="btnEditFtp" class="btn btn-outline" style="display: none;"><i class="fa-solid fa-pen"></i> Modificar</button>
                                     <button type="button" id="btnTestFtp" class="btn btn-outline">Probar Conexión</button>
                                 </div>
                             </form>
@@ -235,7 +239,10 @@
                                     <label>Llave Privada (.key)</label>
                                     <input type="file" id="keyFile" accept=".key">
                                 </div>
-                                <button type="submit" class="btn btn-primary" style="margin-bottom: 24px;">Subir Archivos</button>
+                                <div class="btn-group" style="margin-bottom: 24px;">
+                                    <button type="submit" id="btnSaveFiel" class="btn btn-primary">Subir Archivos</button>
+                                    <button type="button" id="btnEditFielFiles" class="btn btn-outline" style="display: none;"><i class="fa-solid fa-pen"></i> Modificar Archivos</button>
+                                </div>
                             </form>
 
                             <form id="passwordForm" class="settings-form">
@@ -247,7 +254,8 @@
                                     Contraseña e.firma no guardada
                                 </div>
                                 <div class="btn-group">
-                                    <button type="submit" class="btn btn-primary">Guardar Contraseña</button>
+                                    <button type="submit" id="btnSaveFielPwd" class="btn btn-primary">Guardar Contraseña</button>
+                                    <button type="button" id="btnEditFielPwd" class="btn btn-outline" style="display: none;"><i class="fa-solid fa-pen"></i> Modificar</button>
                                     <button type="button" id="btnTestEfirma" class="btn btn-outline">Probar e.firma</button>
                                 </div>
                             </form>
@@ -272,7 +280,8 @@
                                     <small>Necesaria para descargar facturas canceladas de forma automática mediante IA.</small>
                                 </div>
                                 <div class="btn-group">
-                                    <button type="submit" class="btn btn-primary">Guardar CIEC</button>
+                                    <button type="submit" id="btnSaveCiec" class="btn btn-primary">Guardar CIEC</button>
+                                    <button type="button" id="btnEditCiec" class="btn btn-outline" style="display: none;"><i class="fa-solid fa-pen"></i> Modificar</button>
                                     <button type="button" id="btnTestCiec" class="btn btn-outline">Probar CIEC (Resolver Captcha)</button>
                                 </div>
                             </form>
